@@ -1,5 +1,5 @@
 # Checks if the PR title follows semantic commit message conventions
-name: Lint PR
+name: Lint PR Title
 
 on:
   workflow_call:
