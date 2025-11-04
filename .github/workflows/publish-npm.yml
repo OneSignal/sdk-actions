@@ -17,6 +17,8 @@ jobs:
   publish:
     name: Publish
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -81,51 +83,10 @@ jobs:
             fi
           fi
 
-      - name: Create release notes
-        uses: actions/github-script@v8
-        id: release_notes
-        env:
-          VERSION: ${{ steps.get_version.outputs.version }}
-        with:
-          script: |
-            const version = process.env.VERSION;
-            let releaseNotes = '';
-
-            const prs = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'closed',
-              sort: 'updated',
-              direction: 'desc',
-              per_page: 50
-            });
-
-            const releasePr = prs.data.find(pr =>
-              pr.merged_at && pr.title.includes(`chore: Release ${version}`)
-            );
-
-            if (releasePr) {
-              releaseNotes = releasePr.body.split('<!--')[0].trim();
-            }
-
-            core.setOutput('notes', releaseNotes);
-
-      - name: Create GitHub Release
-        uses: actions/github-script@v8
-        env:
-          RELEASE_NOTES: ${{ steps.release_notes.outputs.notes }}
-        with:
-          script: |
-            const notes = process.env.RELEASE_NOTES;
-            const version = '${{ steps.get_version.outputs.version }}';
-            const isPrerelease = /alpha|beta/i.test(version);
-
-            await github.rest.repos.createRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              tag_name: version,
-              name: `Release ${version}`,
-              body: notes,
-              draft: false,
-              prerelease: isPrerelease
-            });
+  create_release:
+    name: Create GitHub Release
+    needs: publish
+    if: needs.publish.outputs.version != ''
+    uses: ./.github/workflows/github-release.yml
+    with:
+      version: ${{ needs.publish.outputs.version }}
