@@ -1,0 +1,93 @@
+# Given some branch e.g. main or rel/**, publishes package to NPM and creates a GitHub release
+name: Publish to NPM & Create GitHub Release
+
+on:
+  workflow_call:
+    inputs:
+      branch:
+        required: false
+        type: string
+        description: Branch to checkout (main or rel/**)
+        default: main
+
+permissions:
+  id-token: write # Required for OIDC
+  contents: write
+
+jobs:
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ inputs.branch }}
+
+        # Bun for installing dependencies and building
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install & Build
+        run: |
+          bun install --frozen-lockfile
+          bun run build
+
+        # Can't use Bun yet for publishing to NPM via OIDC, so we use Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+        # for publishing
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Get version
+        id: get_version
+        run: |
+          CURRENT_VERSION=$(bun -e "console.log(require('./package.json').version)")
+          PACKAGE_NAME=$(bun -e "console.log(require('./package.json').name)")
+          if git rev-parse "$CURRENT_VERSION" >/dev/null 2>&1; then
+            echo "Tag $CURRENT_VERSION already exists, nothing to do"
+            exit 0
+          else
+            echo "Tag $CURRENT_VERSION does not exist, proceeding with release creation"
+          fi
+          echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "package_name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+
+      - name: Publish
+        run: |
+          VERSION='${{ steps.get_version.outputs.version }}'
+          PACKAGE_NAME='${{ steps.get_version.outputs.package_name }}'
+          # Check if version already exists on npm
+          if npm view ${PACKAGE_NAME}@${VERSION} > /dev/null 2>&1; then
+            echo "Version $VERSION already published, skipping publish"
+          else
+            if [[ $VERSION =~ alpha ]]; then
+              npm publish --tag alpha
+            elif [[ $VERSION =~ beta ]]; then
+              npm publish --tag beta
+            else
+              npm publish
+            fi
+          fi
+
+  create_github_release:
+    name: Create GitHub Release
+    needs: publish
+    if: needs.publish.outputs.version != ''
+    uses: ./.github/workflows/github-release.yml
+    with:
+      version: ${{ needs.publish.outputs.version }}

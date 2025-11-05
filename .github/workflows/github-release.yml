@@ -1,0 +1,72 @@
+# Given a version, finds a merged release pr with release version in the title and uses pr body to generate release notes
+# NOTE: We expected the merged pr title to be `chore: Release ${version}` or `Release ${version}` e.g. `chore: Release 5.2.15` or `Release 5.2.15`
+name: Create GitHub Release
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+        description: Version to release
+
+permissions:
+  contents: write
+
+jobs:
+  create_release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Create release notes
+        uses: actions/github-script@v8
+        id: release_notes
+        env:
+          VERSION: ${{ inputs.version }}
+        with:
+          script: |
+            const version = process.env.VERSION;
+            let releaseNotes = '';
+
+            const prs = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed',
+              sort: 'updated',
+              direction: 'desc',
+              per_page: 50
+            });
+
+            const releasePr = prs.data.find(pr =>
+              pr.merged_at && pr.title.replace(/^chore:\s*/i, '').startsWith(`Release ${version}`)
+            );
+
+            if (releasePr) {
+              releaseNotes = releasePr.body.split('<!--')[0].trim();
+            }
+
+            core.setOutput('notes', releaseNotes);
+
+      - name: Create GitHub Release
+        uses: actions/github-script@v8
+        env:
+          RELEASE_NOTES: ${{ steps.release_notes.outputs.notes }}
+        with:
+          script: |
+            const notes = process.env.RELEASE_NOTES;
+            const version = '${{ inputs.version }}';
+            const isPrerelease = /alpha|beta/i.test(version);
+
+            await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: version,
+              name: `Release ${version}`,
+              body: notes,
+              draft: false,
+              prerelease: isPrerelease
+            });
