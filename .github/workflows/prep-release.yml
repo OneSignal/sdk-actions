@@ -26,9 +26,8 @@ jobs:
       - name: Release branch name
         id: release_branch
         run: |
-          # Omit alpha/beta version e.g. 5.2.15-beta.1 -> 5.2.15-beta
-          BRANCH_VERSION=$(echo "${{ inputs.version }}" | sed 's/\(-[a-z]*\)\.[0-9]*$/\1/')
-          echo "releaseBranch=rel/$BRANCH_VERSION" >> $GITHUB_OUTPUT
+          # Use the full version including alpha/beta suffix
+          echo "releaseBranch=rel/${{ inputs.version }}" >> $GITHUB_OUTPUT
 
       - name: Create release branch
         run: |
