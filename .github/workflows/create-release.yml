@@ -67,8 +67,11 @@ jobs:
       - name: Get last release commit
         id: last_commit
         run: |
-          # Get the last tag from the current branch
-          CURRENT_VERSION=$(git describe --tags --abbrev=0)
+          # Get the last tag from the target branch (already checked out)
+          CURRENT_VERSION=$(git describe --tags --abbrev=0 2>/dev/null) || {
+            # Fallback to first commit if no tags
+            git rev-list --max-parents=0 HEAD
+          }
           LAST_RELEASE_DATE=$(git show -s --format=%cI "$CURRENT_VERSION")
           echo "date=$LAST_RELEASE_DATE" >> $GITHUB_OUTPUT
 
