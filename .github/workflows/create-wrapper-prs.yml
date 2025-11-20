@@ -1,0 +1,36 @@
+name: Create Wrapper PRs
+
+on:
+  workflow_call:
+    inputs:
+      android_version:
+        required: true
+        type: string
+        description: The Android SDK version to update to
+      ios_version:
+        required: true
+        type: string
+        description: The iOS SDK version to update to
+
+jobs:
+  versions:
+    runs-on: ubuntu-latest
+    outputs:
+      cordova: ${{ steps.versions.outputs.cordova }}
+    steps:
+      - name: Get latest Cordova release
+        id: versions
+        run: |
+          LATEST_VERSION=$(gh release view --repo OneSignal/OneSignal-Cordova-SDK --exclude-pre-releases --json tagName -q '.tagName' || echo "")
+          NEW_VERSION=$(semver bump patch "$LATEST_VERSION")
+          echo "cordova=$NEW_VERSION" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  cordova-release:
+    needs: versions
+    uses: OneSignal/OneSignal-Cordova-SDK/.github/workflows/create-release-pr.yml@main
+    with:
+      cordova_version: ${{ needs.versions.outputs.cordova }}
+      android_version: ${{ inputs.android_version }}
+      ios_version: ${{ inputs.ios_version }}
