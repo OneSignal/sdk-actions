@@ -1,36 +1,80 @@
 name: Create Wrapper PRs
 
 on:
-  workflow_call:
+  workflow_dispatch: # TODO: For testing, remove me before merging
     inputs:
       android_version:
-        required: true
+        required: false
         type: string
         description: The Android SDK version to update to
       ios_version:
-        required: true
+        required: false
+        type: string
+        description: The iOS SDK version to update to
+
+  workflow_call:
+    inputs:
+      android_version:
+        required: false
+        type: string
+        description: The Android SDK version to update to
+      ios_version:
+        required: false
         type: string
         description: The iOS SDK version to update to
 
 jobs:
+  validate-inputs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate at least one input provided
+        run: |
+          if [[ -z "${{ inputs.android_version }}" && -z "${{ inputs.ios_version }}" ]]; then
+            echo "❌ Error: At least one of 'android_version' or 'ios_version' must be provided"
+            exit 1
+          fi
+          echo "✓ Input validation passed"
+
   versions:
+    needs: validate-inputs
     runs-on: ubuntu-latest
     outputs:
-      cordova: ${{ steps.versions.outputs.cordova }}
+      cordova: ${{ steps.cordova.outputs.version }}
+      flutter: ${{ steps.flutter.outputs.version }}
     steps:
+      - name: Install semver
+        run: npm install -g semver
+
       - name: Get latest Cordova release
-        id: versions
+        id: cordova
         run: |
           LATEST_VERSION=$(gh release view --repo OneSignal/OneSignal-Cordova-SDK --exclude-pre-releases --json tagName -q '.tagName' || echo "")
-          NEW_VERSION=$(semver bump patch "$LATEST_VERSION")
-          echo "cordova=$NEW_VERSION" >> $GITHUB_OUTPUT
+          NEW_VERSION=$(semver "$LATEST_VERSION" -i patch)
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Get latest Flutter release
+        id: flutter
+        run: |
+          LATEST_VERSION=$(gh release view --repo OneSignal/OneSignal-Flutter-SDK --exclude-pre-releases --json tagName -q '.tagName' || echo "")
+          NEW_VERSION=$(semver "$LATEST_VERSION" -i patch)
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
         env:
           GH_TOKEN: ${{ github.token }}
 
   cordova-release:
-    needs: versions
+    needs: [validate-inputs, versions]
     uses: OneSignal/OneSignal-Cordova-SDK/.github/workflows/create-release-pr.yml@main
     with:
       cordova_version: ${{ needs.versions.outputs.cordova }}
+      android_version: ${{ inputs.android_version }}
+      ios_version: ${{ inputs.ios_version }}
+
+  flutter-release:
+    needs: [validate-inputs, versions]
+    uses: OneSignal/OneSignal-Flutter-SDK/.github/workflows/create-release-pr.yml@main
+    with:
+      flutter_version: ${{ needs.versions.outputs.flutter }}
       android_version: ${{ inputs.android_version }}
       ios_version: ${{ inputs.ios_version }}
