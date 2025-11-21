@@ -55,13 +55,16 @@ on:
 jobs:
   create_release:
     runs-on: ubuntu-latest
+    env:
+      TARGET_REPO: ${{ inputs.target_repo || github.repository }}
+      GH_TOKEN: ${{ secrets.GH_PUSH_TOKEN || github.token }}
     steps:
       - uses: actions/checkout@v5
         with:
           ref: ${{ inputs.target_branch }}
           fetch-depth: 0
-          repository: ${{ inputs.target_repo || github.repository }}
-          token: ${{ secrets.GH_PUSH_TOKEN || github.token }}
+          repository: ${{ env.TARGET_REPO }}
+          token: ${{ env.GH_TOKEN }}
 
       - name: Extract version_to from release_branch
         id: release_version
@@ -91,7 +94,7 @@ jobs:
             const releaseBranch = '${{ inputs.release_branch }}';
             const targetBranch = '${{ inputs.target_branch }}';
             const version = '${{ steps.release_version.outputs.version_to }}';
-            const targetRepo = '${{ inputs.target_repo || github.repository }}';
+            const targetRepo = process.env.TARGET_REPO;
 
             // Parse target repo to get owner and repo name
             const [owner, repo] = targetRepo.split('/');
@@ -270,8 +273,6 @@ jobs:
             core.setOutput('notes', releaseNotes);
 
       - name: Create release PR
-        env:
-          GH_TOKEN: ${{ secrets.GH_PUSH_TOKEN || github.token }}
         run: |
           # Checkout the release branch
           git checkout ${{ inputs.release_branch }}
