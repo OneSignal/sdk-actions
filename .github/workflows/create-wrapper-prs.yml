@@ -42,6 +42,7 @@ jobs:
       cordova: ${{ steps.versions.outputs.cordova }}
       flutter: ${{ steps.versions.outputs.flutter }}
       react_native: ${{ steps.versions.outputs.react-native }}
+      unity: ${{ steps.versions.outputs.unity }}
     steps:
       - uses: oven-sh/setup-bun@v2
         with:
@@ -61,6 +62,9 @@ jobs:
                 ;;
               react-native)
                 REPO="OneSignal/react-native-onesignal"
+                ;;
+              unity)
+                REPO="OneSignal/OneSignal-Unity-SDK"
                 ;;
             esac
 
@@ -112,5 +116,15 @@ jobs:
       GH_PUSH_TOKEN: ${{ secrets.GH_PUSH_TOKEN }}
     with:
       rn_version: ${{ needs.versions.outputs.react_native }}
+      android_version: ${{ inputs.android_version }}
+      ios_version: ${{ inputs.ios_version }}
+
+  unity-release:
+    needs: [versions]
+    uses: OneSignal/OneSignal-Unity-SDK/.github/workflows/create-release-pr.yml@main
+    secrets:
+      GH_PUSH_TOKEN: ${{ secrets.GH_PUSH_TOKEN }}
+    with:
+      unity_version: ${{ needs.versions.outputs.unity }}
       android_version: ${{ inputs.android_version }}
       ios_version: ${{ inputs.ios_version }}
