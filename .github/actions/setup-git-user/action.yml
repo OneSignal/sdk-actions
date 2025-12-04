@@ -1,0 +1,10 @@
+name: "Setup Git User"
+description: "Configure git user for commits"
+runs:
+  using: "composite"
+  steps:
+    - name: Configure Git
+      shell: bash
+      run: |
+        git config --local user.email "noreply@onesignal.com"
+        git config --local user.name "github-actions[bot]"
