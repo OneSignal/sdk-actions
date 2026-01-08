@@ -51,13 +51,21 @@ jobs:
           # Use the full version including alpha/beta suffix
           echo "releaseBranch=rel/${{ inputs.version }}" >> $GITHUB_OUTPUT
 
-      - name: Create release branch
+      - name: Setup Git user
+        uses: onesignal/sdk-actions/.github/actions/setup-git-user@main
+
+      - name: Create or rebase release branch
         run: |
           releaseBranch="${{ steps.release_branch.outputs.releaseBranch }}"
+          targetBranch="${{ inputs.target_branch }}"
 
           # Check if branch already exists on remote
           if git ls-remote --heads origin "$releaseBranch" | grep -q "$releaseBranch"; then
-            echo "ℹ️ Branch $releaseBranch already exists on remote, skipping creation"
+            echo "ℹ️ Branch $releaseBranch already exists, rebasing onto $targetBranch"
+            git fetch origin "$releaseBranch"
+            git checkout "$releaseBranch"
+            git rebase "origin/$targetBranch"
+            git push --force-with-lease origin "$releaseBranch"
           else
             # Create branch and push
             git checkout -b "$releaseBranch"
