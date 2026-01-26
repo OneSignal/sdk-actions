@@ -11,6 +11,22 @@ on:
         required: false
         type: string
         description: The iOS SDK version to update to
+      cordova:
+        type: boolean
+        default: true
+        description: Update Cordova SDK
+      flutter:
+        type: boolean
+        default: true
+        description: Update Flutter SDK
+      react_native:
+        type: boolean
+        default: true
+        description: Update React Native SDK
+      unity:
+        type: boolean
+        default: true
+        description: Update Unity SDK
 
   workflow_call:
     inputs:
@@ -119,6 +135,7 @@ jobs:
 
   cordova-release:
     needs: [versions]
+    if: inputs.cordova != false
     uses: OneSignal/OneSignal-Cordova-SDK/.github/workflows/create-release-pr.yml@main
     secrets:
       GH_PUSH_TOKEN: ${{ secrets.GH_PUSH_TOKEN }}
@@ -129,6 +146,7 @@ jobs:
 
   flutter-release:
     needs: [versions]
+    if: inputs.flutter != false
     uses: OneSignal/OneSignal-Flutter-SDK/.github/workflows/create-release-pr.yml@main
     secrets:
       GH_PUSH_TOKEN: ${{ secrets.GH_PUSH_TOKEN }}
@@ -139,6 +157,7 @@ jobs:
 
   react-native-release:
     needs: [versions]
+    if: inputs.react_native != false
     uses: OneSignal/react-native-onesignal/.github/workflows/create-release-pr.yml@main
     secrets:
       GH_PUSH_TOKEN: ${{ secrets.GH_PUSH_TOKEN }}
@@ -149,6 +168,7 @@ jobs:
 
   unity-release:
     needs: [versions]
+    if: inputs.unity != false
     uses: OneSignal/OneSignal-Unity-SDK/.github/workflows/create-release-pr.yml@main
     secrets:
       GH_PUSH_TOKEN: ${{ secrets.GH_PUSH_TOKEN }}
