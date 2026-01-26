@@ -350,8 +350,11 @@ jobs:
           TARGET_BRANCH="${{ inputs.target_branch }}"
 
           if [ "${{ steps.check_pr.outputs.exists }}" == "true" ]; then
-            # Update existing PR
-            gh pr edit "${{ steps.check_pr.outputs.number }}" --body-file release_notes.md
+            # Update existing PR body using API to avoid permission issues with gh pr edit
+            gh api \
+              --method PATCH \
+              "/repos/$TARGET_REPO/pulls/${{ steps.check_pr.outputs.number }}" \
+              -F body=@release_notes.md
           else
             # Write release notes to file to avoid shell interpretation
             cat > release_notes.md << 'EOF'

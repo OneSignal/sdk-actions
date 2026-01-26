@@ -9,6 +9,11 @@ on:
         required: true
         type: string
         description: Version to release
+    secrets:
+      # In case we want to trigger other workflows like ones that uses pushed tags
+      GH_PUSH_TOKEN:
+        required: false
+        description: GitHub token with push permissions
 
 permissions:
   contents: write
@@ -56,6 +61,7 @@ jobs:
         env:
           RELEASE_NOTES: ${{ steps.release_notes.outputs.notes }}
         with:
+          github-token: ${{ secrets.GH_PUSH_TOKEN || github.token }}
           script: |
             const notes = process.env.RELEASE_NOTES;
             const version = '${{ inputs.version }}';
