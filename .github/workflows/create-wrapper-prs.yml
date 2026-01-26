@@ -86,7 +86,7 @@ jobs:
           bun-version: latest
       - run: bun i -g semver
 
-      - name: Get latest SDK releases and close existing PRs
+      - name: Get latest SDK releases
         id: versions
         run: |
           # Define SDK to repo mapping
@@ -104,31 +104,6 @@ jobs:
             LATEST_VERSION=$(gh release list --repo "$REPO" --limit 20 --json tagName,isPrerelease | jq -r '.[] | select(.isPrerelease == false) | .tagName' | head -1 || echo "")
             NEW_VERSION=$(semver "$LATEST_VERSION" -i patch)
             echo "$SDK=$NEW_VERSION" >> $GITHUB_OUTPUT
-
-            # Close existing PR for this exact version if it exists (unless it has protected labels)
-            RELEASE_BRANCH="rel/$NEW_VERSION"
-            PR_INFO=$(gh pr list \
-              --repo "$REPO" \
-              --head "$RELEASE_BRANCH" \
-              --state open \
-              --json number,labels -q '.[0]')
-
-            if [ -n "$PR_INFO" ] && [ "$PR_INFO" != "null" ]; then
-              PR_NUMBER=$(echo "$PR_INFO" | jq -r '.number')
-              PROTECTED_LABELS="do-not-close,in-review,blocked"
-              HAS_PROTECTED_LABEL=$(echo "$PR_INFO" | jq -r --arg labels "$PROTECTED_LABELS" '.labels[].name | select(. as $l | $labels | split(",") | index($l))')
-
-              if [ -n "$HAS_PROTECTED_LABEL" ]; then
-                echo "⚠️ Skipping close of $SDK PR #$PR_NUMBER (has protected label: $HAS_PROTECTED_LABEL)"
-              else
-                # Attempt to close PR, but don't fail if permission denied
-                if gh pr close "$PR_NUMBER" --repo "$REPO" 2>&1; then
-                  echo "ℹ️ Closed $SDK PR #$PR_NUMBER for branch $RELEASE_BRANCH"
-                else
-                  echo "⚠️ Warning: Could not close $SDK PR #$PR_NUMBER (may lack permissions)"
-                fi
-              fi
-            fi
           done
         env:
           GH_TOKEN: ${{ secrets.GH_PUSH_TOKEN || github.token }}
