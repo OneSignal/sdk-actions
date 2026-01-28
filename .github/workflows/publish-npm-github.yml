@@ -47,12 +47,6 @@ jobs:
           bun run build
 
         # Can't use Bun yet for publishing to NPM via OIDC, so we use Node.js
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
-        with:
-          node-version: "24"
-          registry-url: "https://registry.npmjs.org"
-
         # for publishing
       - name: Setup Node
         uses: actions/setup-node@v6

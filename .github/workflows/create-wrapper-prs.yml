@@ -11,6 +11,13 @@ on:
         required: false
         type: string
         description: The iOS SDK version to update to
+      version_bump:
+        type: choice
+        default: patch
+        description: Version bump type for wrapper SDKs
+        options:
+          - patch
+          - minor
       cordova:
         type: boolean
         default: true
@@ -58,6 +65,11 @@ on:
         required: false
         default: true
         description: Update Unity SDK
+      version_bump:
+        type: string
+        required: false
+        default: patch
+        description: Version bump type for wrapper SDKs (patch or minor)
     secrets:
       GH_PUSH_TOKEN:
         required: false
@@ -122,7 +134,7 @@ jobs:
 
             # Get latest stable version (exclude pre-releases)
             LATEST_VERSION=$(gh release list --repo "$REPO" --limit 20 --json tagName,isPrerelease | jq -r '.[] | select(.isPrerelease == false) | .tagName' | head -1 || echo "")
-            NEW_VERSION=$(semver "$LATEST_VERSION" -i patch)
+            NEW_VERSION=$(semver "$LATEST_VERSION" -i "${{ inputs.version_bump || 'patch' }}")
             echo "$SDK=$NEW_VERSION" >> $GITHUB_OUTPUT
           done
         env:
