@@ -93,6 +93,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Validate at least one input provided
+        if: github.event_name == 'workflow_call'
         run: |
           if [[ -z "${{ inputs.android_version }}" && -z "${{ inputs.ios_version }}" ]]; then
             echo "❌ Error: At least one of 'android_version' or 'ios_version' must be provided"
