@@ -1,5 +1,5 @@
 # Prepares release information and branch, outputs release metadata
-# Avoid passing `target_repo`, just used by sdk-actions itself
+# Avoid passing `target_repo`, just used by sdk-shared itself
 name: Release Preparation
 
 on:
@@ -52,7 +52,7 @@ jobs:
           echo "releaseBranch=rel/${{ inputs.version }}" >> $GITHUB_OUTPUT
 
       - name: Setup Git user
-        uses: onesignal/sdk-actions/.github/actions/setup-git-user@main
+        uses: onesignal/sdk-shared/.github/actions/setup-git-user@main
 
       - name: Create or rebase release branch
         run: |
