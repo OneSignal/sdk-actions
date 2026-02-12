@@ -56,7 +56,7 @@ Outcome operations:
 - sendOutcomeWithValue(name: String, value: Float)
 
 Track Event:
-- trackEvent(name: String, value: String?)
+- trackEvent(name: String, properties: Map<String, Any?>?)
 
 Push subscription:
 - getPushSubscriptionId(): String?
@@ -112,6 +112,9 @@ In MainApplication.kt, set up OneSignal listeners:
 - INotificationClickListener
 - INotificationLifecycleListener (with preventDefault() for async display testing)
 - IUserStateObserver (log when user state changes)
+- After registering listeners, restore cached SDK states from SharedPreferences:
+  - OneSignal.InAppMessages.paused = cached paused status
+  - OneSignal.Location.isShared = cached location shared status
 
 In MainViewModel.kt, implement observers:
 - IPushSubscriptionObserver - react to push subscription changes
@@ -486,7 +489,7 @@ Example layout for section header:
 
 ---
 
-## Phase 5: Data Persistence
+## Phase 5: Data Persistence & Initialization
 
 ### What IS Persisted (SharedPreferences)
 
@@ -497,6 +500,29 @@ SharedPreferenceUtil.kt stores:
 - External user ID (for login state restoration)
 - Location shared status
 - In-app messaging paused status
+```
+
+### Initialization Flow
+
+```
+On app startup, state is restored in two layers:
+
+1. MainApplication.kt restores SDK state from SharedPreferences cache:
+   - OneSignal.InAppMessages.paused = SharedPreferenceUtil.getCachedInAppMessagingPausedStatus(context)
+   - OneSignal.Location.isShared = SharedPreferenceUtil.getCachedLocationSharedStatus(context)
+   This ensures the SDK has the correct state before any UI is created.
+
+2. MainViewModel.loadInitialState() reads UI state from the SDK (not SharedPreferences):
+   - _privacyConsentGiven from repository.getPrivacyConsent() (reads OneSignal.consentGiven)
+   - _inAppMessagesPaused from repository.isInAppMessagesPaused() (reads OneSignal.InAppMessages.paused)
+   - _locationShared from repository.isLocationShared() (reads OneSignal.Location.isShared)
+   - _externalUserId from OneSignal.User.externalId (empty string means no user logged in)
+   - _appId from SharedPreferenceUtil (app-level config, no SDK getter)
+
+This two-layer approach ensures:
+- The SDK is configured with the user's last preferences before anything else runs
+- The ViewModel reads the SDK's actual state as the source of truth for the UI
+- The UI always reflects what the SDK reports, not stale cache values
 ```
 
 ### What is NOT Persisted (In-Memory Only)
